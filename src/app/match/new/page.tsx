@@ -3,141 +3,90 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
-import {
-  Plus,
-  Minus,
-  Save,
-  Check,
-  Star,
-  ArrowLeft,
-} from "lucide-react";
+import { Plus, Minus, Star, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { Stat } from "@/lib/types";
+import type { Match } from "@/lib/types";
 
-type PlayerMatchState = {
-  selected: boolean;
-  team: "A" | "B";
-  goals: number;
-  assists: number;
-  is_mvp: boolean;
-};
-
-export default function NewMatchPage() {
-  const router = useRouter();
-  const { players, fetchPlayers, addMatch } = useAppStore();
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [playerStates, setPlayerStates] = useState<
-    Record<string, PlayerMatchState>
-  >({});
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function MatchPage() {
+  const { players, stats, fetchAll, updateStat } = useAppStore();
+  const [match, setMatch] = useState<Match | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    fetchPlayers();
-  }, [fetchPlayers]);
+    fetchAll().then(() => loadTodayMatch());
+  }, [fetchAll]);
 
-  const updatePlayer = useCallback(
-    (playerId: string, update: Partial<PlayerMatchState>) => {
-      setPlayerStates((prev) => ({
-        ...prev,
-        [playerId]: { ...prev[playerId], ...update },
-      }));
-    },
-    []
-  );
-
-  const togglePlayer = useCallback(
-    (playerId: string) => {
-      setPlayerStates((prev) => {
-        const current = prev[playerId];
-        if (current?.selected) {
-          const { [playerId]: _, ...rest } = prev;
-          void _;
-          return rest;
-        }
-        return {
-          ...prev,
-          [playerId]: {
-            selected: true,
-            team: "A",
-            goals: 0,
-            assists: 0,
-            is_mvp: false,
-          },
-        };
-      });
-    },
-    []
-  );
-
-  const selectedPlayers = Object.entries(playerStates).filter(
-    ([, s]) => s.selected
-  );
-  const teamA = selectedPlayers.filter(([, s]) => s.team === "A");
-  const teamB = selectedPlayers.filter(([, s]) => s.team === "B");
-  const scoreA = teamA.reduce(
-    (sum, [, s]) => sum + s.goals,
-    0
-  );
-  const scoreB = teamB.reduce(
-    (sum, [, s]) => sum + s.goals,
-    0
-  );
-
-  const handleSave = async () => {
-    if (selectedPlayers.length < 2) {
-      setError("Select at least 2 players");
-      return;
-    }
-    if (teamA.length === 0 || teamB.length === 0) {
-      setError("Both teams need at least 1 player");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-
+  const loadTodayMatch = async () => {
     const supabase = createClient();
-
-    // Insert match
-    const { data: matchData, error: matchErr } = await supabase
+    const today = new Date().toISOString().split("T")[0];
+    const { data } = await supabase
       .from("matches")
-      .insert({ date, score_a: scoreA, score_b: scoreB })
+      .select("*")
+      .eq("date", today)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    if (data) setMatch(data);
+    setLoading(false);
+  };
+
+  const createMatch = async () => {
+    setCreating(true);
+    const supabase = createClient();
+    const today = new Date().toISOString().split("T")[0];
+    const { data } = await supabase
+      .from("matches")
+      .insert({ date: today })
       .select()
       .single();
-
-    if (matchErr || !matchData) {
-      setError(matchErr?.message ?? "Failed to create match");
-      setSaving(false);
-      return;
-    }
-
-    // Insert stats
-    const statsToInsert = selectedPlayers.map(([playerId, s]) => ({
-      match_id: matchData.id,
-      player_id: playerId,
-      team: s.team,
-      goals: s.goals,
-      assists: s.assists,
-      is_mvp: s.is_mvp,
-    }));
-
-    const { data: statsData, error: statsErr } = await supabase
-      .from("stats")
-      .insert(statsToInsert)
-      .select();
-
-    if (statsErr) {
-      setError(statsErr.message);
-      setSaving(false);
-      return;
-    }
-
-    // Optimistic update
-    addMatch(matchData, statsData as Stat[]);
-    router.push("/");
+    if (data) setMatch(data);
+    setCreating(false);
   };
+
+  const updatePlayerStat = useCallback(
+    async (
+      playerId: string,
+      field: "goals" | "assists" | "is_mvp",
+      value: number | boolean
+    ) => {
+      if (!match) return;
+      const supabase = createClient();
+
+      const existing = stats.find(
+        (s) => s.match_id === match.id && s.player_id === playerId
+      );
+
+      if (existing) {
+        const updated = { ...existing, [field]: value };
+        updateStat(updated);
+        await supabase.from("stats").update({ [field]: value }).eq("id", existing.id);
+      } else {
+        const newStat = {
+          match_id: match.id,
+          player_id: playerId,
+          goals: field === "goals" ? (value as number) : 0,
+          assists: field === "assists" ? (value as number) : 0,
+          is_mvp: field === "is_mvp" ? (value as boolean) : false,
+        };
+        const { data } = await supabase
+          .from("stats")
+          .insert(newStat)
+          .select()
+          .single();
+        if (data) updateStat(data);
+      }
+    },
+    [match, stats, updateStat]
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-muted" size={24} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
@@ -145,206 +94,117 @@ export default function NewMatchPage() {
         <Link href="/" className="text-muted hover:text-foreground">
           <ArrowLeft size={20} />
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight">Log Match</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Match Day</h1>
       </div>
 
-      {/* Date picker */}
-      <div className="mb-6">
-        <label className="block text-xs text-muted uppercase tracking-wider mb-2">
-          Match Date
-        </label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-full bg-surface border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
-        />
-      </div>
-
-      {/* Score display */}
-      <div className="flex items-center justify-center gap-4 mb-6 py-4 bg-surface rounded-xl">
-        <div className="text-center">
-          <div className="text-xs text-team-a font-bold uppercase mb-1">
-            Team A
-          </div>
-          <div className="text-4xl font-bold text-team-a">{scoreA}</div>
+      {!match ? (
+        <div className="text-center py-12">
+          <p className="text-muted mb-4">No match started for today.</p>
+          <button
+            onClick={createMatch}
+            disabled={creating}
+            className="bg-primary hover:bg-primary-dark disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+          >
+            {creating ? "Starting..." : "Start Today's Match"}
+          </button>
         </div>
-        <div className="text-2xl text-muted font-bold">vs</div>
-        <div className="text-center">
-          <div className="text-xs text-team-b font-bold uppercase mb-1">
-            Team B
+      ) : (
+        <div className="space-y-3">
+          <div className="text-sm text-muted mb-4">
+            {new Date(match.date).toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
           </div>
-          <div className="text-4xl font-bold text-team-b">{scoreB}</div>
-        </div>
-      </div>
 
-      {/* Player Selection */}
-      <div className="mb-4">
-        <h2 className="text-sm text-muted uppercase tracking-wider mb-3">
-          Select Players ({selectedPlayers.length} selected)
-        </h2>
-        <div className="space-y-2">
           {players.map((player) => {
-            const state = playerStates[player.id];
-            const isSelected = state?.selected;
+            const stat = stats.find(
+              (s) => s.match_id === match.id && s.player_id === player.id
+            );
+            const goals = stat?.goals ?? 0;
+            const assists = stat?.assists ?? 0;
+            const isMvp = stat?.is_mvp ?? false;
 
             return (
-              <div key={player.id} className="space-y-0">
-                {/* Player row: selection + team toggle */}
-                <div
-                  className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors cursor-pointer ${
-                    isSelected
-                      ? state.team === "A"
-                        ? "bg-team-a/10 border border-team-a/30"
-                        : "bg-team-b/10 border border-team-b/30"
-                      : "bg-surface hover:bg-surface-light"
-                  }`}
-                >
-                  {/* Select checkbox */}
+              <div
+                key={player.id}
+                className="bg-surface rounded-xl p-4 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{player.name}</span>
                   <button
-                    onClick={() => togglePlayer(player.id)}
-                    className={`w-6 h-6 rounded border flex items-center justify-center shrink-0 ${
-                      isSelected
-                        ? "bg-primary border-primary"
-                        : "border-border"
+                    onClick={() =>
+                      updatePlayerStat(player.id, "is_mvp", !isMvp)
+                    }
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+                      isMvp
+                        ? "bg-gold/20 text-gold"
+                        : "text-muted hover:text-gold"
                     }`}
                   >
-                    {isSelected && <Check size={14} />}
+                    <Star size={14} />
+                    MVP
                   </button>
-
-                  <span className="flex-1 font-medium text-sm truncate">
-                    {player.name}
-                  </span>
-
-                  {isSelected && (
-                    <>
-                      {/* Team toggle */}
-                      <div className="flex rounded-md overflow-hidden border border-border">
-                        <button
-                          onClick={() =>
-                            updatePlayer(player.id, { team: "A" })
-                          }
-                          className={`px-2 py-1 text-xs font-bold ${
-                            state.team === "A"
-                              ? "bg-team-a text-white"
-                              : "text-muted"
-                          }`}
-                        >
-                          A
-                        </button>
-                        <button
-                          onClick={() =>
-                            updatePlayer(player.id, { team: "B" })
-                          }
-                          className={`px-2 py-1 text-xs font-bold ${
-                            state.team === "B"
-                              ? "bg-team-b text-white"
-                              : "text-muted"
-                          }`}
-                        >
-                          B
-                        </button>
-                      </div>
-                    </>
-                  )}
                 </div>
 
-                {/* Stats row (goals, assists, MVP) */}
-                {isSelected && (
-                  <div className="flex items-center gap-4 px-3 py-2 ml-9">
-                    {/* Goals */}
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted w-10">Goals</span>
-                      <button
-                        onClick={() =>
-                          updatePlayer(player.id, {
-                            goals: Math.max(0, state.goals - 1),
-                          })
-                        }
-                        className="w-7 h-7 rounded bg-surface-light flex items-center justify-center text-muted hover:text-foreground"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="w-6 text-center text-sm font-bold">
-                        {state.goals}
-                      </span>
-                      <button
-                        onClick={() =>
-                          updatePlayer(player.id, {
-                            goals: state.goals + 1,
-                          })
-                        }
-                        className="w-7 h-7 rounded bg-primary/20 flex items-center justify-center text-primary hover:bg-primary/30"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-
-                    {/* Assists */}
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted w-10">Ast</span>
-                      <button
-                        onClick={() =>
-                          updatePlayer(player.id, {
-                            assists: Math.max(0, state.assists - 1),
-                          })
-                        }
-                        className="w-7 h-7 rounded bg-surface-light flex items-center justify-center text-muted hover:text-foreground"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="w-6 text-center text-sm font-bold">
-                        {state.assists}
-                      </span>
-                      <button
-                        onClick={() =>
-                          updatePlayer(player.id, {
-                            assists: state.assists + 1,
-                          })
-                        }
-                        className="w-7 h-7 rounded bg-primary/20 flex items-center justify-center text-primary hover:bg-primary/30"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-
-                    {/* MVP */}
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted w-12">Goals</span>
                     <button
                       onClick={() =>
-                        updatePlayer(player.id, { is_mvp: !state.is_mvp })
+                        updatePlayerStat(player.id, "goals", Math.max(0, goals - 1))
                       }
-                      className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                        state.is_mvp
-                          ? "bg-gold/20 text-gold"
-                          : "text-muted hover:text-gold"
-                      }`}
+                      className="w-8 h-8 rounded-lg bg-surface-light flex items-center justify-center text-muted hover:text-foreground"
                     >
-                      <Star size={14} />
-                      MVP
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-6 text-center font-bold">{goals}</span>
+                    <button
+                      onClick={() =>
+                        updatePlayerStat(player.id, "goals", goals + 1)
+                      }
+                      className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary hover:bg-primary/30"
+                    >
+                      <Plus size={14} />
                     </button>
                   </div>
-                )}
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted w-12">Assists</span>
+                    <button
+                      onClick={() =>
+                        updatePlayerStat(player.id, "assists", Math.max(0, assists - 1))
+                      }
+                      className="w-8 h-8 rounded-lg bg-surface-light flex items-center justify-center text-muted hover:text-foreground"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-6 text-center font-bold">{assists}</span>
+                    <button
+                      onClick={() =>
+                        updatePlayerStat(player.id, "assists", assists + 1)
+                      }
+                      className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary hover:bg-primary/30"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
               </div>
             );
           })}
-        </div>
-      </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
-          {error}
+          {players.length === 0 && (
+            <div className="text-center text-muted py-8">
+              <p>No players yet.</p>
+              <Link href="/players" className="text-primary hover:underline">
+                Add players first →
+              </Link>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Save button */}
-      <button
-        onClick={handleSave}
-        disabled={saving || selectedPlayers.length < 2}
-        className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
-      >
-        <Save size={18} />
-        {saving ? "Saving..." : "Save Match"}
-      </button>
     </div>
   );
 }

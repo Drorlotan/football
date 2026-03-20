@@ -8,8 +8,6 @@ import {
   Target,
   HandHelping,
   Star,
-  TrendingUp,
-  Trophy,
   Calendar,
 } from "lucide-react";
 import Link from "next/link";
@@ -41,7 +39,6 @@ export default function PlayerProfilePage() {
         <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
       </div>
 
-      {/* Player header */}
       <div className="flex items-center gap-4 mb-8">
         <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl">
           {player.name.charAt(0).toUpperCase()}
@@ -55,85 +52,28 @@ export default function PlayerProfilePage() {
       </div>
 
       {entry && entry.matches_played > 0 ? (
-        <>
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <StatCard
-              icon={<Trophy size={18} className="text-primary" />}
-              label="Points"
-              value={entry.points}
-            />
-            <StatCard
-              icon={<TrendingUp size={18} className="text-green-400" />}
-              label="Win Rate"
-              value={`${entry.win_rate.toFixed(0)}%`}
-            />
-            <StatCard
-              icon={<Target size={18} className="text-blue-400" />}
-              label="Goals"
-              value={entry.goals}
-            />
-            <StatCard
-              icon={<HandHelping size={18} className="text-purple-400" />}
-              label="Assists"
-              value={entry.assists}
-            />
-            <StatCard
-              icon={<Star size={18} className="text-gold" />}
-              label="MVPs"
-              value={entry.mvp_count}
-            />
-            <StatCard
-              icon={<Calendar size={18} className="text-muted" />}
-              label="Matches"
-              value={entry.matches_played}
-            />
-          </div>
-
-          {/* W/D/L bar */}
-          <div className="bg-surface rounded-xl p-4">
-            <h3 className="text-xs text-muted uppercase tracking-wider mb-3">
-              Record
-            </h3>
-            <div className="flex gap-2 mb-2">
-              {entry.wins > 0 && (
-                <div
-                  className="bg-green-500/30 rounded h-3"
-                  style={{
-                    width: `${
-                      (entry.wins / entry.matches_played) * 100
-                    }%`,
-                  }}
-                />
-              )}
-              {entry.draws > 0 && (
-                <div
-                  className="bg-yellow-500/30 rounded h-3"
-                  style={{
-                    width: `${
-                      (entry.draws / entry.matches_played) * 100
-                    }%`,
-                  }}
-                />
-              )}
-              {entry.losses > 0 && (
-                <div
-                  className="bg-red-500/30 rounded h-3"
-                  style={{
-                    width: `${
-                      (entry.losses / entry.matches_played) * 100
-                    }%`,
-                  }}
-                />
-              )}
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-green-400">{entry.wins}W</span>
-              <span className="text-yellow-400">{entry.draws}D</span>
-              <span className="text-red-400">{entry.losses}L</span>
-            </div>
-          </div>
-        </>
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard
+            icon={<Target size={18} className="text-blue-400" />}
+            label="Goals"
+            value={entry.goals}
+          />
+          <StatCard
+            icon={<HandHelping size={18} className="text-purple-400" />}
+            label="Assists"
+            value={entry.assists}
+          />
+          <StatCard
+            icon={<Star size={18} className="text-gold" />}
+            label="MVPs"
+            value={entry.mvp_count}
+          />
+          <StatCard
+            icon={<Calendar size={18} className="text-muted" />}
+            label="Matches"
+            value={entry.matches_played}
+          />
+        </div>
       ) : (
         <div className="text-center text-muted py-8">
           No match data yet.

@@ -10,6 +10,7 @@ export default function PlayersPage() {
   const { players, fetchPlayers, addPlayer } = useAppStore();
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPlayers();
@@ -20,14 +21,17 @@ export default function PlayersPage() {
     if (!trimmed) return;
 
     setAdding(true);
+    setError(null);
     const supabase = createClient();
-    const { data, error } = await supabase
+    const { data, error: insertError } = await supabase
       .from("players")
       .insert({ name: trimmed })
       .select()
       .single();
 
-    if (data && !error) {
+    if (insertError) {
+      setError(insertError.message);
+    } else if (data) {
       addPlayer(data);
       setName("");
     }
@@ -62,6 +66,12 @@ export default function PlayersPage() {
           <UserPlus size={18} />
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
+          {error}
+        </div>
+      )}
 
       {/* Players list */}
       <div className="space-y-2">

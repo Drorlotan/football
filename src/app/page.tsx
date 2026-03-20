@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useAppStore } from "@/lib/store";
-import { Trophy, Target, Star } from "lucide-react";
+import { Trophy } from "lucide-react";
 import Link from "next/link";
 
 export default function LeaderboardPage() {
@@ -38,24 +38,19 @@ export default function LeaderboardPage() {
       ) : (
         <div className="space-y-2">
           {/* Header */}
-          <div className="grid grid-cols-[auto_1fr_repeat(4,_48px)] gap-2 px-3 py-2 text-xs text-muted uppercase tracking-wider">
+          <div className="grid grid-cols-[auto_1fr_repeat(3,_52px)] gap-2 px-3 py-2 text-xs text-muted uppercase tracking-wider">
             <span className="w-6">#</span>
             <span>Player</span>
-            <span className="text-center">Pts</span>
-            <span className="text-center">
-              <Target size={12} className="inline" />
-            </span>
-            <span className="text-center">W</span>
-            <span className="text-center">
-              <Star size={12} className="inline" />
-            </span>
+            <span className="text-center">Goals</span>
+            <span className="text-center">Ast</span>
+            <span className="text-center">MVP</span>
           </div>
 
           {leaderboard.map((entry, i) => (
             <Link
               key={entry.player.id}
               href={`/players/${entry.player.id}`}
-              className={`grid grid-cols-[auto_1fr_repeat(4,_48px)] gap-2 items-center px-3 py-3 rounded-lg transition-colors ${
+              className={`grid grid-cols-[auto_1fr_repeat(3,_52px)] gap-2 items-center px-3 py-3 rounded-lg transition-colors ${
                 i === 0
                   ? "bg-primary/10 border border-primary/30"
                   : "bg-surface hover:bg-surface-light"
@@ -82,12 +77,11 @@ export default function LeaderboardPage() {
                   {entry.matches_played} matches
                 </div>
               </div>
-              <span className="text-center font-bold text-primary text-sm">
-                {entry.points}
+              <span className="text-center font-bold text-sm">
+                {entry.goals}
               </span>
-              <span className="text-center text-sm">{entry.goals}</span>
-              <span className="text-center text-sm text-green-400">
-                {entry.wins}
+              <span className="text-center text-sm">
+                {entry.assists}
               </span>
               <span className="text-center text-sm text-gold">
                 {entry.mvp_count}
@@ -95,17 +89,7 @@ export default function LeaderboardPage() {
             </Link>
           ))}
 
-          {/* Legend */}
-          <div className="flex gap-4 justify-center pt-4 text-xs text-muted">
-            <span>Pts = Points</span>
-            <span>
-              <Target size={10} className="inline" /> = Goals
-            </span>
-            <span>W = Wins</span>
-            <span>
-              <Star size={10} className="inline" /> = MVP
-            </span>
-          </div>
+
         </div>
       )}
     </div>
