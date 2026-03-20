@@ -1,16 +1,43 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { CalendarDays, ChevronRight } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { CalendarDays, ChevronRight, Trash2 } from "lucide-react";
 import Link from "next/link";
 
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
 export default function MatchesPage() {
-  const { matches, stats, players, fetchAll, loading } = useAppStore();
+  const { matches, stats, players, fetchAll, loading, removeMatch } = useAppStore();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAll();
+    if (ADMIN_EMAIL) {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data }) => {
+        setIsAdmin(
+          data.user?.email?.toLowerCase() === ADMIN_EMAIL?.toLowerCase()
+        );
+      });
+    }
   }, [fetchAll]);
+
+  const handleDelete = async (matchId: string, matchDate: string) => {
+    const label = new Date(matchDate).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    if (!confirm(`Delete match ${label}? All stats for this match will be removed.`)) return;
+    setDeleting(matchId);
+    const supabase = createClient();
+    await supabase.from("stats").delete().eq("match_id", matchId);
+    await supabase.from("matches").delete().eq("id", matchId);
+    removeMatch(matchId);
+    setDeleting(null);
+  };
 
   if (loading && matches.length === 0) {
     return (
@@ -48,28 +75,38 @@ export default function MatchesPage() {
               : null;
 
             return (
-              <Link
-                key={match.id}
-                href={`/match/${match.id}`}
-                className="bg-surface rounded-xl p-4 flex items-center gap-4 hover:bg-surface-light transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium">
-                    {new Date(match.date).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    })}
+              <div key={match.id} className="flex items-center gap-0">
+                <Link
+                  href={`/match/${match.id}`}
+                  className="flex-1 bg-surface rounded-xl p-4 flex items-center gap-4 hover:bg-surface-light transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">
+                      {new Date(match.date).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </div>
+                    <div className="text-xs text-muted mt-0.5">
+                      {matchStats.length} players · {totalGoals}G · {totalAssists}A
+                      {mvpPlayer && (
+                        <span className="text-gold"> · MVP: {mvpPlayer.name}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted mt-0.5">
-                    {matchStats.length} players · {totalGoals}G · {totalAssists}A
-                    {mvpPlayer && (
-                      <span className="text-gold"> · MVP: {mvpPlayer.name}</span>
-                    )}
-                  </div>
-                </div>
-                <ChevronRight size={18} className="text-muted" />
-              </Link>
+                  <ChevronRight size={18} className="text-muted" />
+                </Link>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDelete(match.id, match.date)}
+                    disabled={deleting === match.id}
+                    className="ml-2 p-2 text-muted hover:text-red-400 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

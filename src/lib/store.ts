@@ -15,6 +15,7 @@ type AppState = {
 
   addPlayer: (player: Player) => void;
   removePlayer: (playerId: string) => void;
+  removeMatch: (matchId: string) => void;
   updateStat: (stat: Stat) => void;
 
   getLeaderboard: () => LeaderboardEntry[];
@@ -74,6 +75,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       players: state.players.filter((p) => p.id !== playerId),
       stats: state.stats.filter((s) => s.player_id !== playerId),
+    }));
+  },
+
+  removeMatch: (matchId) => {
+    set((state) => ({
+      matches: state.matches.filter((m) => m.id !== matchId),
+      stats: state.stats.filter((s) => s.match_id !== matchId),
     }));
   },
 

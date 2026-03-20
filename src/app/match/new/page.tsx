@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, Minus, Star, ArrowLeft, Loader2, Search } from "lucide-react";
+import { Plus, Minus, Star, ArrowLeft, Loader2, Search, Lock } from "lucide-react";
 import Link from "next/link";
 import type { Match } from "@/lib/types";
+
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
 export default function MatchPage() {
   const { players, stats, fetchAll, updateStat } = useAppStore();
@@ -13,9 +15,20 @@ export default function MatchPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const isGameDay = new Date().getDay() === 3; // Wednesday
 
   useEffect(() => {
     fetchAll().then(() => loadTodayMatch());
+    if (ADMIN_EMAIL) {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data }) => {
+        setIsAdmin(
+          data.user?.email?.toLowerCase() === ADMIN_EMAIL?.toLowerCase()
+        );
+      });
+    }
   }, [fetchAll]);
 
   const loadTodayMatch = async () => {
@@ -95,10 +108,21 @@ export default function MatchPage() {
         <Link href="/" className="text-muted hover:text-foreground">
           <ArrowLeft size={20} />
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight">Today&apos;s Match</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Game Day</h1>
       </div>
 
-      {!match ? (
+      {!isGameDay && !isAdmin ? (
+        <div className="text-center py-12">
+          <Lock size={40} className="mx-auto text-muted mb-4" />
+          <p className="font-medium mb-2">Stats are locked</p>
+          <p className="text-sm text-muted">
+            Stats can only be updated on game day (Wednesday).
+          </p>
+          <p className="text-sm text-muted mt-1">
+            See you on the pitch! ⚽
+          </p>
+        </div>
+      ) : !match ? (
         <div className="text-center py-12">
           <p className="text-muted mb-4">No match started for today.</p>
           <button

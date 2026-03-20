@@ -6,7 +6,7 @@ import { Trophy, PlusCircle, Users, CalendarDays, LogIn } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Leaderboard", icon: Trophy },
-  { href: "/match/new", label: "New Match", icon: PlusCircle },
+  { href: "/match/new", label: "Game Day", icon: PlusCircle },
   { href: "/matches", label: "Matches", icon: CalendarDays },
   { href: "/players", label: "Players", icon: Users },
   { href: "/login", label: "Login", icon: LogIn },
