@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, Minus, Star, ArrowLeft, Loader2 } from "lucide-react";
+import { Plus, Minus, Star, ArrowLeft, Loader2, Search } from "lucide-react";
 import Link from "next/link";
 import type { Match } from "@/lib/types";
 
@@ -12,6 +12,7 @@ export default function MatchPage() {
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchAll().then(() => loadTodayMatch());
@@ -118,7 +119,20 @@ export default function MatchPage() {
             })}
           </div>
 
-          {players.map((player) => {
+          <div className="relative mb-2">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search players..."
+              className="w-full bg-surface border border-border rounded-lg pl-9 pr-4 py-2.5 text-foreground placeholder:text-muted focus:outline-none focus:border-primary text-sm"
+            />
+          </div>
+
+          {players
+            .filter((p) => !search.trim() || p.name.toLowerCase().includes(search.toLowerCase()))
+            .map((player) => {
             const stat = stats.find(
               (s) => s.match_id === match.id && s.player_id === player.id
             );
