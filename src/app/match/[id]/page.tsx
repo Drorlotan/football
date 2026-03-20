@@ -20,7 +20,9 @@ export default function MatchDetailsPage() {
     if (ADMIN_EMAIL) {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data }) => {
-        setIsAdmin(data.user?.email === ADMIN_EMAIL);
+        setIsAdmin(
+          data.user?.email?.toLowerCase() === ADMIN_EMAIL?.toLowerCase()
+        );
       });
     }
   }, [fetchAll]);

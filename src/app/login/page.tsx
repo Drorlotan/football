@@ -1,14 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Mail, Loader2 } from "lucide-react";
+import { Mail, Loader2, LogOut } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setChecking(false);
+    });
+  }, []);
 
   const handleLogin = async () => {
     if (!email.trim()) return;
@@ -41,6 +52,20 @@ export default function LoginPage() {
     });
   };
 
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="animate-spin text-muted" size={24} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
       <div className="w-full max-w-sm space-y-6">
@@ -49,7 +74,24 @@ export default function LoginPage() {
           <p className="text-muted text-sm">Track your squad&apos;s stats</p>
         </div>
 
-        {sent ? (
+        {user ? (
+          <div className="bg-surface rounded-xl p-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl mx-auto">
+              {(user.email ?? "?").charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="font-medium">{user.email}</p>
+              <p className="text-xs text-muted mt-1">Logged in</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 mx-auto text-sm text-muted hover:text-red-400 transition-colors cursor-pointer"
+            >
+              <LogOut size={16} />
+              Sign out
+            </button>
+          </div>
+        ) : sent ? (
           <div className="bg-primary/10 border border-primary/30 rounded-xl p-6 text-center">
             <Mail className="mx-auto mb-3 text-primary" size={32} />
             <p className="font-medium">Check your email!</p>
@@ -90,7 +132,7 @@ export default function LoginPage() {
 
             <button
               onClick={handleGoogleLogin}
-              className="w-full bg-surface hover:bg-surface-light border border-border text-foreground font-medium py-3 rounded-lg transition-colors"
+              className="w-full bg-surface hover:bg-surface-light border border-border text-foreground font-medium py-3 rounded-lg transition-colors cursor-pointer"
             >
               Continue with Google
             </button>
