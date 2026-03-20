@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { Trophy } from "lucide-react";
+import type { LeaderboardEntry } from "@/lib/types";
+import { Trophy, ChevronDown } from "lucide-react";
 import Link from "next/link";
+
+type SortKey = "goals" | "assists" | "ga" | "gpg" | "mvp";
 
 export default function LeaderboardPage() {
   const { loading, fetchAll, getLeaderboard } = useAppStore();
   const leaderboard = getLeaderboard();
+  const [sortBy, setSortBy] = useState<SortKey>("goals");
 
   useEffect(() => {
     fetchAll();
@@ -41,14 +45,14 @@ export default function LeaderboardPage() {
           <div className="grid grid-cols-[auto_1fr_repeat(5,_44px)] gap-1 px-3 py-2 text-xs text-muted uppercase tracking-wider">
             <span className="w-6">#</span>
             <span>Player</span>
-            <span className="text-center">Goals</span>
-            <span className="text-center">Ast</span>
-            <span className="text-center">G+A</span>
-            <span className="text-center">G/Gm</span>
-            <span className="text-center">MVP</span>
+            <SortHeader label="Goals" sortKey="goals" current={sortBy} onSort={setSortBy} />
+            <SortHeader label="Ast" sortKey="assists" current={sortBy} onSort={setSortBy} />
+            <SortHeader label="G+A" sortKey="ga" current={sortBy} onSort={setSortBy} />
+            <SortHeader label="G/Gm" sortKey="gpg" current={sortBy} onSort={setSortBy} />
+            <SortHeader label="MVP" sortKey="mvp" current={sortBy} onSort={setSortBy} />
           </div>
 
-          {leaderboard.map((entry, i) => (
+          {sorted(leaderboard, sortBy).map((entry, i) => (
             <Link
               key={entry.player.id}
               href={`/players/${entry.player.id}`}
@@ -103,5 +107,52 @@ export default function LeaderboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function sorted(entries: LeaderboardEntry[], sortBy: SortKey) {
+  return [...entries].sort((a, b) => {
+    switch (sortBy) {
+      case "goals":
+        return b.goals - a.goals || b.assists - a.assists;
+      case "assists":
+        return b.assists - a.assists || b.goals - a.goals;
+      case "ga":
+        return (b.goals + b.assists) - (a.goals + a.assists);
+      case "gpg": {
+        const aGpg = a.matches_played > 0 ? a.goals / a.matches_played : 0;
+        const bGpg = b.matches_played > 0 ? b.goals / b.matches_played : 0;
+        return bGpg - aGpg || b.goals - a.goals;
+      }
+      case "mvp":
+        return b.mvp_count - a.mvp_count || b.goals - a.goals;
+      default:
+        return 0;
+    }
+  });
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  current,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  current: SortKey;
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = current === sortKey;
+  return (
+    <button
+      onClick={() => onSort(sortKey)}
+      className={`text-center flex items-center justify-center gap-0.5 transition-colors ${
+        isActive ? "text-primary" : "hover:text-foreground"
+      }`}
+    >
+      {label}
+      {isActive && <ChevronDown size={10} />}
+    </button>
   );
 }

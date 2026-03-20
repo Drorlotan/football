@@ -14,6 +14,7 @@ type AppState = {
   fetchAll: () => Promise<void>;
 
   addPlayer: (player: Player) => void;
+  removePlayer: (playerId: string) => void;
   updateStat: (stat: Stat) => void;
 
   getLeaderboard: () => LeaderboardEntry[];
@@ -66,6 +67,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       players: [...state.players, player].sort((a, b) =>
         a.name.localeCompare(b.name)
       ),
+    }));
+  },
+
+  removePlayer: (playerId) => {
+    set((state) => ({
+      players: state.players.filter((p) => p.id !== playerId),
+      stats: state.stats.filter((s) => s.player_id !== playerId),
     }));
   },
 
