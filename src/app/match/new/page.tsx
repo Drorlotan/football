@@ -94,7 +94,7 @@ export default function MatchPage() {
         <Link href="/" className="text-muted hover:text-foreground">
           <ArrowLeft size={20} />
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight">Match Day</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Today&apos;s Match</h1>
       </div>
 
       {!match ? (

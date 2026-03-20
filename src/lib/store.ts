@@ -18,6 +18,7 @@ type AppState = {
 
   getLeaderboard: () => LeaderboardEntry[];
   getPlayerStats: (playerId: string) => LeaderboardEntry | null;
+  getPlayerMatchHistory: (playerId: string) => { date: string; goals: number; assists: number; is_mvp: boolean }[];
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -105,5 +106,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   getPlayerStats: (playerId) => {
     const leaderboard = get().getLeaderboard();
     return leaderboard.find((e) => e.player.id === playerId) ?? null;
+  },
+
+  getPlayerMatchHistory: (playerId) => {
+    const { matches, stats } = get();
+    return stats
+      .filter((s) => s.player_id === playerId)
+      .map((s) => {
+        const match = matches.find((m) => m.id === s.match_id);
+        return {
+          date: match?.date ?? "",
+          goals: s.goals,
+          assists: s.assists,
+          is_mvp: s.is_mvp,
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
   },
 }));

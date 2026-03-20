@@ -38,11 +38,13 @@ export default function LeaderboardPage() {
       ) : (
         <div className="space-y-2">
           {/* Header */}
-          <div className="grid grid-cols-[auto_1fr_repeat(3,_52px)] gap-2 px-3 py-2 text-xs text-muted uppercase tracking-wider">
+          <div className="grid grid-cols-[auto_1fr_repeat(5,_44px)] gap-1 px-3 py-2 text-xs text-muted uppercase tracking-wider">
             <span className="w-6">#</span>
             <span>Player</span>
             <span className="text-center">Goals</span>
             <span className="text-center">Ast</span>
+            <span className="text-center">G+A</span>
+            <span className="text-center">G/Gm</span>
             <span className="text-center">MVP</span>
           </div>
 
@@ -50,7 +52,7 @@ export default function LeaderboardPage() {
             <Link
               key={entry.player.id}
               href={`/players/${entry.player.id}`}
-              className={`grid grid-cols-[auto_1fr_repeat(3,_52px)] gap-2 items-center px-3 py-3 rounded-lg transition-colors ${
+              className={`grid grid-cols-[auto_1fr_repeat(5,_44px)] gap-1 items-center px-3 py-3 rounded-lg transition-colors ${
                 i === 0
                   ? "bg-primary/10 border border-primary/30"
                   : "bg-surface hover:bg-surface-light"
@@ -82,6 +84,14 @@ export default function LeaderboardPage() {
               </span>
               <span className="text-center text-sm">
                 {entry.assists}
+              </span>
+              <span className="text-center text-sm text-primary">
+                {entry.goals + entry.assists}
+              </span>
+              <span className="text-center text-sm">
+                {entry.matches_played > 0
+                  ? (entry.goals / entry.matches_played).toFixed(1)
+                  : "0"}
               </span>
               <span className="text-center text-sm text-gold">
                 {entry.mvp_count}
