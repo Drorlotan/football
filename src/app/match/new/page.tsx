@@ -111,18 +111,7 @@ export default function MatchPage() {
         <h1 className="text-2xl font-bold tracking-tight">Game Day</h1>
       </div>
 
-      {!isGameDay && !isAdmin ? (
-        <div className="text-center py-12">
-          <Lock size={40} className="mx-auto text-muted mb-4" />
-          <p className="font-medium mb-2">Stats are locked</p>
-          <p className="text-sm text-muted">
-            Stats can only be updated on game day (Wednesday).
-          </p>
-          <p className="text-sm text-muted mt-1">
-            See you on the pitch! ⚽
-          </p>
-        </div>
-      ) : !match ? (
+      {!match ? (
         <div className="text-center py-12">
           <p className="text-muted mb-4">No match started for today.</p>
           <button
